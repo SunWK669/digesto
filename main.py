@@ -1,59 +1,71 @@
-import requests
+import json
 import logging
-import re
-import pandas as pd
-from bs4 import BeautifulSoup
+import sys
+from scrappers.vultr import extract_vultr
+from scrappers.digital_ocean import extract_digital_ocean
 
-logging.basicConfig(filename="vultr.log", level=logging.ERROR)
+logging.basicConfig(filename="scrappers.log", level=logging.ERROR)
 
+def main(argv):
+    if argv:
 
-def extract_vultr():
+        response_vultr, row_count_vultr = extract_vultr()
+        response_digital_ocean, row_count_digital_ocean = extract_digital_ocean()
+
+        for option in argv:
+            if "--help" in option:
+                show_options()
+
+            elif "--print" in option:
+                print(response_vultr)
+                print("\n")
+                print(response_digital_ocean)
+
+            elif "--save_json" in option:
+                if not row_count_vultr > 0 or not row_count_digital_ocean > 0:
+                    print(response_vultr)
+                    print("\n")
+                    print(response_digital_ocean)
+                    return
+                generate_file(response_vultr, "vultr.json", "json")
+                generate_file(response_digital_ocean, "digital_ocean.json", "json")
+
+            elif "--save_csv" in option:
+                if not row_count_vultr > 0 or not row_count_digital_ocean > 0:
+                    print(response_vultr)
+                    print("\n")
+                    print(response_digital_ocean)
+                    return
+                generate_file(response_vultr, "vultr.csv", "csv")
+                generate_file(response_digital_ocean, "digital_ocean.csv", "csv")
+
+            else:
+                show_options()
+    else:
+        show_options()
+
+def generate_file(response, filename, extension):
     """
-    Function that returns a DataFrame to easily vizualize
-    the products of cloud compute of Vultr.
-
-    Returns a Dataframe with the data ready to be vizualized or an error message.
+    Funtion to generate the json or csv file
     """
-    url = "https://www.vultr.com/products/cloud-compute/#pricing"
-    df = pd.DataFrame(columns=["Storage", "CPU", "Memory", "Bandwidth", "Price"])
-
-    response = requests.get(url)
-    if response.status_code != 200:
-        error = "The url doesn't return status_code equals to 200."
-        return error
-    soup = BeautifulSoup(response.text, "html.parser")
-    table = soup.find("div", attrs={"class": "pt__body js-body"})
-    if table is None:
-        logging.error(
-            "BeautifulSoup Doesn't find the table check if the path is still the same."
-        )
-        error = "Unable to find the table please check the logfile."
-        return error
-    try:
-        rows = table.find_all("div", attrs={"class": "pt__row"})
-    except Exception as e:
-        logging.error(str(e))
-        erro = "Unable to find the rows of the table please check the logfile."
-        return error
-
-    row_count = 0
-    for row in rows:
-        cells = row.find_all("div", attrs={"class": "pt__cell"})
-        cells_text = [re.sub(r"\s", "", cell.get_text()) for cell in cells]
-        cells_text.pop(0)
-        cells_text = normalize_row(cells_text)
-        df.loc[row_count] = cells_text
-        row_count += 1
-    return df.head(row_count)
+    file = open(filename, "w")
+    if extension == "json":
+        file.write(response.to_json())
+    else:
+        file.write(response.to_csv())
+    file.close()
 
 
-def normalize_row_vultr(cells_text):
-    cells_text[2] = cells_text[2].replace("Ram", "")
-    cells_text[3] = cells_text[3].replace("Bandwidth", "")
-    cells_text[-1] = "$" + cells_text[-1].split("$")[1]
-    return cells_text
+def show_options():
+    print("\n")
+    print("Required flags")
+    print("#" * 45)
+    print("--help - Show how to use the flags")
+    print("--print -  Print result in the screen")
+    print("--save_json - Save the result in .json file")
+    print("--save_csv - Save the result in .csv file")
+    print("#" * 45)
 
 
 if __name__ == "__main__":
-    response = extract_vultr()
-    print(response)
+    main(sys.argv[1:])
