@@ -12,7 +12,8 @@ def extract_vultr():
     Function that returns a DataFrame to easily vizualize
     the products of cloud compute of Vultr.
 
-    Returns a Dataframe with the data ready to be vizualized or an error message.
+    Returns a Dataframe with the data ready to be vizualized and a row counts
+    or an error message and row count 0.
     """
     url = "https://www.vultr.com/products/cloud-compute/#pricing"
     df = pd.DataFrame(columns=["Storage", "CPU", "Memory", "Bandwidth", "Price"])
@@ -20,7 +21,7 @@ def extract_vultr():
     response = requests.get(url)
     if response.status_code != 200:
         error = "The url doesn't return status_code equals to 200."
-        return error
+        return error, 0
     soup = BeautifulSoup(response.text, "html.parser")
     table = soup.find("div", attrs={"class": "pt__body js-body"})
     if table is None:
@@ -28,13 +29,13 @@ def extract_vultr():
             "BeautifulSoup Doesn't find the table check if the path is still the same."
         )
         error = "Unable to find the table please check the logfile."
-        return error
+        return error, 0
     try:
         rows = table.find_all("div", attrs={"class": "pt__row"})
     except Exception as e:
         logging.error(str(e))
         erro = "Unable to find the rows of the table please check the logfile."
-        return error
+        return error, 0
 
     row_count = 0
     for row in rows:
@@ -44,7 +45,7 @@ def extract_vultr():
         cells_text = normalize_row(cells_text)
         df.loc[row_count] = cells_text
         row_count += 1
-    return df.head(row_count)
+    return df, row_count
 
 
 def normalize_row(cells_text):
