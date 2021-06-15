@@ -1,17 +1,18 @@
 import requests
+import logging
 import re
 import pandas as pd
 from bs4 import BeautifulSoup
 
-def extract_vultr():
+def extract_digital_ocean():
     """
     Function that returns a DataFrame to easily vizualize
-    the products of cloud compute of Vultr.
+    the products of cloud compute of Digital Ocean.
 
     Returns a Dataframe with the data ready to be vizualized and a row counts
     or an error message and row count 0.
     """
-    url = "https://www.vultr.com/products/cloud-compute/#pricing"
+    url = "https://www.digitalocean.com/pricing/"
     df = pd.DataFrame(columns=["Storage", "CPU", "Memory", "Bandwidth", "Price"])
 
     response = requests.get(url)
@@ -19,7 +20,7 @@ def extract_vultr():
         error = "The url doesn't return status_code equals to 200."
         return error, 0
     soup = BeautifulSoup(response.text, "html.parser")
-    table = soup.find("div", attrs={"class": "pt__body js-body"})
+    table = soup.find("ul", attrs={"class": "priceBox"})
     if table is None:
         logging.error(
             "BeautifulSoup Doesn't find the table check if the path is still the same."
@@ -27,7 +28,7 @@ def extract_vultr():
         error = "Unable to find the table please check the logfile."
         return error, 0
     try:
-        rows = table.find_all("div", attrs={"class": "pt__row"})
+        rows = table.find_all("li", attrs={"class": "priceBoxItem"})
     except Exception as e:
         logging.error(str(e))
         erro = "Unable to find the rows of the table please check the logfile."
@@ -35,19 +36,21 @@ def extract_vultr():
 
     row_count = 0
     for row in rows:
-        cells = row.find_all("div", attrs={"class": "pt__cell"})
-        current_row = normalize_row(cells)
+        content_divs = row.find_all("div")
+        current_row = normalize_row(content_divs)
         df.loc[row_count] = current_row
         row_count += 1
     return df, row_count
 
-def normalize_row(cells):
+def normalize_row(content_divs):
     """
-    Normalize each one of the cells in the current row
+    Normalize each one of the fields in the current row
     """
-    cells_text = [re.sub(r"\s", "", cell.get_text()) for cell in cells]
-    cells_text.pop(0)
-    cells_text[2] = cells_text[2].replace("Ram", "")
-    cells_text[3] = cells_text[3].replace("Bandwidth", "")
-    cells_text[-1] = "$" + cells_text[-1].split("$")[1]
-    return cells_text
+    current_row = []
+    infos = [item.get_text() for item in content_divs[2].find_all("li")]
+    current_row.append(infos[1].replace("Disk", "").strip())
+    current_row.append(infos[0].split("/")[1].strip())
+    current_row.append(infos[0].split("/")[0].strip())
+    current_row.append(infos[-1].replace("transfer", "").strip())
+    current_row.append(content_divs[0].get_text().split(" ")[0])
+    return current_row
