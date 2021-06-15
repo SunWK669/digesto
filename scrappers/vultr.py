@@ -1,4 +1,5 @@
 import requests
+import logging
 import re
 import pandas as pd
 from bs4 import BeautifulSoup
