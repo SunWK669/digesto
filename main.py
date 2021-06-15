@@ -2,6 +2,7 @@ import json
 import sys
 from scrappers.vultr import extract_vultr
 
+
 def main(argv):
     if argv:
 
@@ -16,9 +17,15 @@ def main(argv):
                 if not row_count > 0:
                     print(response)
                     return
-
                 file = open("vultr.json", "w")
                 file.write(response.to_json())
+                file.close()
+            elif "--save_csv" in option:
+                if not row_count > 0:
+                    print(response)
+                    return
+                file = open("vultr.csv", "w")
+                file.write(response.to_csv())
                 file.close()
 
             else:
@@ -26,16 +33,17 @@ def main(argv):
     else:
         show_options()
 
+
 def show_options():
-    print('\n')
+    print("\n")
     print("Required flags")
-    print('#' * 45)
-    print('--help - Show how to use the flags')
-    print('--print -  Print result in the screen')
-    print('--save_json - Save the result in .json file')
-    print('#' * 45)
-        
+    print("#" * 45)
+    print("--help - Show how to use the flags")
+    print("--print -  Print result in the screen")
+    print("--save_json - Save the result in .json file")
+    print("--save_csv - Save the result in .csv file")
+    print("#" * 45)
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-    
